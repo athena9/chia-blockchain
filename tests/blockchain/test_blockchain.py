@@ -28,13 +28,13 @@ from chia.types.end_of_slot_bundle import EndOfSubSlotBundle
 from chia.types.full_block import FullBlock
 from chia.types.spend_bundle import SpendBundle
 from chia.types.unfinished_block import UnfinishedBlock
-from chia.util.block_tools import BlockTools, get_vdf_info_and_proof
+from tests.block_tools import BlockTools, get_vdf_info_and_proof
 from chia.util.errors import Err
 from chia.util.hash import std_hash
 from chia.util.ints import uint8, uint64, uint32
 from chia.util.merkle_set import MerkleSet
 from chia.util.recursive_replace import recursive_replace
-from chia.util.wallet_tools import WalletTool
+from tests.wallet_tools import WalletTool
 from tests.core.fixtures import default_400_blocks  # noqa: F401; noqa: F401
 from tests.core.fixtures import default_1000_blocks  # noqa: F401
 from tests.core.fixtures import default_10000_blocks  # noqa: F401
@@ -2589,3 +2589,17 @@ class TestReorgs:
             != blocks_without_filter[header_hash].transactions_filter
         )
         assert blocks_with_filter[header_hash].header_hash == blocks_without_filter[header_hash].header_hash
+
+    @pytest.mark.asyncio
+    async def test_get_blocks_at(self, empty_blockchain, default_1000_blocks):
+        b = empty_blockchain
+        heights = []
+        for block in default_1000_blocks[:200]:
+            heights.append(block.height)
+            result, error_code, _ = await b.receive_block(block)
+            assert error_code is None and result == ReceiveBlockResult.NEW_PEAK
+
+        blocks = await b.get_block_records_at(heights, batch_size=2)
+        assert blocks
+        assert len(blocks) == 200
+        assert blocks[-1].height == 199
